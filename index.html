@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Swarm Training Playground</title>
+    <style>
+      :root {
+        --bottom-height: clamp(260px, 32vh, 340px);
+        color-scheme: light;
+        --blue: #1677e8;
+        --blue-dark: #0f5fbd;
+        --green: #27AE60;
+        --red: #EB5757;
+        --orange: #e87511;
+        --ink: #111827;
+        --text: #111827;
+        --muted: #4b5563;
+        --line: #dfe5ee;
+        --panel: #ffffff;
+        --page: #f6f8fb;
+        --sidebar: #fbfcfe;
+        --field-bg: #ffffff;
+        --field-border: #ccd6e1;
+        --control-bg: #ffffff;
+        --control-bg-hover: #f4f8ff;
+        --control-text: #0f5fbd;
+        --subtle-line: #edf1f6;
+        --primary-button-text: #ffffff;
+        --primary-gradient: linear-gradient(180deg, #1a83f5 0%, #0f72df 100%);
+        --primary-gradient-hover: linear-gradient(180deg, #2490ff 0%, #1069ce 100%);
+        --primary-shadow: 0 7px 16px rgba(22, 119, 232, 0.22);
+        --card-shadow: 0 3px 16px rgba(17, 24, 39, 0.04);
+        --scene-bg: #ffffff;
+        --canvas-bg: #ffffff;
+        --canvas-grid: #d8dee8;
+        --canvas-axis: #8b96a8;
+        --canvas-target: #27AE60;
+        --canvas-obstacle: #EB5757;
+        --canvas-agent: #1677e8;
+        --canvas-agent-hot: #e87511;
+        --canvas-best: #e87511;
+        --canvas-heatmap: rgba(235, 87, 87, 0.22);
+        --canvas-trail: rgba(22, 119, 232, 0.22);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body[data-theme="dark"] {
+        color-scheme: dark;
+        --bg1: #191919;
+        --bg2: #222222;
+        --primary: #5D71FC;
+        --blue: #5D71FC;
+        --blue-dark: #5D71FC;
+        --page: var(--bg1);
+        --panel: var(--bg2);
+        --sidebar: var(--bg2);
+        --scene-bg: var(--bg1);
+        --canvas-bg: var(--bg1);
+        --ink: #f8f8f8;
+        --text: #f8f8f8;
+        --muted: rgba(248, 248, 248, 0.62);
+        --line: transparent;
+        --subtle-line: transparent;
+        --field-border: transparent;
+        --field-bg: var(--bg1);
+        --control-bg: var(--bg1);
+        --control-bg-hover: var(--bg2);
+        --control-text: var(--primary);
+        --primary-button-text: #f8f8f8;
+        --primary-gradient: linear-gradient(180deg, var(--primary) 0%, var(--primary) 100%);
+        --primary-gradient-hover: linear-gradient(180deg, var(--primary) 0%, var(--primary) 100%);
+        --primary-shadow: none;
+        --card-shadow: none;
+        --canvas-grid: rgba(248, 248, 248, 0.08);
+        --canvas-axis: rgba(248, 248, 248, 0.42);
+        --canvas-target: #27AE60;
+        --canvas-obstacle: #EB5757;
+        --canvas-agent: #5D71FC;
+        --canvas-agent-hot: #f89540;
+        --canvas-best: #f89540;
+        --canvas-heatmap: rgba(235, 87, 87, 0.24);
+        --canvas-trail: rgba(93, 113, 252, 0.18);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        color: var(--text);
+        background: var(--page);
+      }
+
+      body,
+      button,
+      input {
+        font: inherit;
+      }
+
+      button,
+      input[type="range"] {
+        cursor: pointer;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: clamp(286px, 19vw, 380px) minmax(0, 1fr);
+        width: 100vw;
+        height: 100vh;
+        min-height: 620px;
+      }
+
+      .sidebar {
+        min-width: 0;
+        height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: var(--sidebar);
+        border-right: 1px solid var(--line);
+      }
+
+      .sidebar-inner {
+        padding: 18px 18px 22px;
+      }
+
+      .brand {
+        padding: 0 0 14px;
+      }
+
+      .brand h1 {
+        margin: 0 0 4px;
+        font-size: 24px;
+        line-height: 1.15;
+        font-weight: 800;
+      }
+
+      .brand p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      .control-section,
+      .info-card {
+        padding: 15px 0 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .control-section h2,
+      .info-card h2,
+      .data-card h2 {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.1;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .slider-field,
+      .toggle-field {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px 10px;
+        width: 100%;
+        margin-top: 15px;
+        font-size: 13px;
+      }
+
+      .slider-field output {
+        min-width: 54px;
+        text-align: right;
+        color: var(--text);
+      }
+
+      .slider-field input {
+        grid-column: 1 / -1;
+        width: 100%;
+        margin: 0;
+      }
+
+      input[type="range"] {
+        --range-progress: 50%;
+        --slider-fill: var(--blue);
+        --slider-track: #191919;
+        appearance: none;
+        height: 22px;
+        background: transparent;
+        accent-color: var(--slider-fill);
+      }
+
+      input[type="range"]::-webkit-slider-runnable-track {
+        height: 6px;
+        border-radius: 8px;
+        background: linear-gradient(90deg, var(--slider-fill) 0%, var(--slider-fill) var(--range-progress), var(--slider-track) var(--range-progress), var(--slider-track) 100%);
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        margin-top: -5px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--slider-fill);
+      }
+
+      input[type="range"]::-moz-range-track {
+        height: 6px;
+        border-radius: 8px;
+        background: var(--slider-track);
+      }
+
+      input[type="range"]::-moz-range-progress {
+        height: 6px;
+        border-radius: 8px;
+        background: var(--slider-fill);
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--slider-fill);
+      }
+
+      .toggle-field {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 34px;
+        padding: 0 2px;
+      }
+
+      .toggle-field input {
+        width: 34px;
+        height: 18px;
+        margin: 0;
+        appearance: none;
+        position: relative;
+        flex: 0 0 auto;
+        background: var(--control-bg);
+        border: 1px solid var(--field-border);
+        border-radius: 8px;
+      }
+
+      .toggle-field input::before {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 8px;
+        background: var(--muted);
+        transition: transform 120ms ease, background 120ms ease;
+      }
+
+      .toggle-field input:checked {
+        background: var(--blue);
+      }
+
+      .toggle-field input:checked::before {
+        transform: translateX(16px);
+        background: var(--primary-button-text);
+      }
+
+      .primary-button {
+        width: 100%;
+        height: 44px;
+        margin: 12px 0 16px;
+        border: 0;
+        border-radius: 8px;
+        color: var(--primary-button-text);
+        background: var(--primary-gradient);
+        font-size: 16px;
+        font-weight: 700;
+        box-shadow: var(--primary-shadow);
+      }
+
+      .primary-button:hover {
+        background: var(--primary-gradient-hover);
+      }
+
+      .secondary-button {
+        width: 100%;
+        height: 38px;
+        margin: 0 0 16px;
+        border: 1px solid var(--field-border);
+        border-radius: 8px;
+        color: var(--control-text);
+        background: var(--control-bg);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .secondary-button:hover {
+        background: var(--control-bg-hover);
+      }
+
+      .info-card p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .workspace {
+        min-width: 0;
+        height: 100vh;
+        padding: 18px;
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) var(--bottom-height);
+        gap: 18px;
+      }
+
+      .simulation-card,
+      .data-card {
+        overflow: hidden;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--card-shadow);
+      }
+
+      .simulation-card {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      .sim-header {
+        min-height: 68px;
+        padding: 14px 16px 12px;
+        border-bottom: 1px solid var(--subtle-line);
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        float: right;
+      }
+
+      .header-button {
+        min-width: 42px;
+        height: 36px;
+        padding: 0 12px;
+        border: 1px solid var(--field-border);
+        border-radius: 8px;
+        color: var(--control-text);
+        background: var(--control-bg);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .header-button:hover {
+        background: var(--control-bg-hover);
+      }
+
+      .sim-header h2 {
+        margin: 0 0 4px;
+        font-size: 20px;
+        line-height: 1.15;
+      }
+
+      .sim-header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .scene-frame {
+        position: relative;
+        min-height: 0;
+        background: var(--scene-bg);
+      }
+
+      #sceneMount,
+      #sceneMount canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .canvas-overlay {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        display: flex;
+        gap: 8px;
+        pointer-events: none;
+      }
+
+      .chip {
+        padding: 7px 10px;
+        border-radius: 8px;
+        color: var(--text);
+        background: color-mix(in srgb, var(--panel) 88%, transparent);
+        border: 1px solid var(--line);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .bottom-grid {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+
+      .data-card {
+        padding: 14px 16px;
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .metric {
+        min-width: 0;
+        padding: 11px 12px;
+        border-radius: 8px;
+        background: var(--field-bg);
+        border: 1px solid var(--subtle-line);
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 18px;
+        line-height: 1.15;
+      }
+
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 13px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .swatch {
+        width: 11px;
+        height: 11px;
+        border-radius: 8px;
+        flex: 0 0 auto;
+      }
+
+      .target { background: var(--canvas-target); }
+      .agent { background: var(--canvas-agent); }
+      .elite { background: var(--canvas-agent-hot); }
+      .obstacle { background: var(--canvas-obstacle); }
+      .best { background: var(--canvas-best); }
+      .heatmap { background: var(--canvas-heatmap); }
+
+      .genome-card {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        gap: 10px;
+      }
+
+      .genome-meta {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .genome-canvas {
+        display: block;
+        width: 100%;
+        height: 110px;
+        border: 1px solid var(--subtle-line);
+        border-radius: 8px;
+        background: var(--field-bg);
+      }
+
+      .compact-legend {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px 12px;
+      }
+
+      .compact-legend .legend-row {
+        margin-top: 0;
+        font-size: 12px;
+      }
+
+      body[data-theme="dark"] .sidebar,
+      body[data-theme="dark"] .simulation-card,
+      body[data-theme="dark"] .data-card,
+      body[data-theme="dark"] .header-button {
+        border: 0;
+        background: var(--panel);
+        box-shadow: none;
+      }
+
+      body[data-theme="dark"] .secondary-button {
+        border: 0;
+        background: var(--control-bg);
+        box-shadow: none;
+      }
+
+      body[data-theme="dark"] .control-section,
+      body[data-theme="dark"] .info-card,
+      body[data-theme="dark"] .sim-header,
+      body[data-theme="dark"] .metric,
+      body[data-theme="dark"] .genome-canvas {
+        border-color: transparent;
+      }
+
+      body[data-theme="dark"] .header-button:hover,
+      body[data-theme="dark"] .secondary-button:hover {
+        color: var(--text);
+        background: var(--control-bg-hover);
+      }
+
+      @media (max-width: 900px) {
+        html,
+        body {
+          overflow: auto;
+        }
+
+        .app-shell {
+          grid-template-columns: 1fr;
+          height: auto;
+          min-height: 100vh;
+        }
+
+        .sidebar {
+          height: auto;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .workspace {
+          height: auto;
+          min-height: 760px;
+          grid-template-rows: minmax(520px, 66vh) auto;
+        }
+
+        .bottom-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body data-theme="light">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Control panel">
+        <div class="sidebar-inner">
+          <header class="brand">
+            <h1>Swarm Training Playground</h1>
+            <p>Genetic agents learning a route to target</p>
+          </header>
+
+          <section class="control-section">
+            <h2>TRAINING</h2>
+            <label class="slider-field" for="populationSize">
+              <span>Population size</span>
+              <output id="populationSizeValue">1000</output>
+              <input id="populationSize" type="range" min="100" max="1500" step="50" value="1000">
+            </label>
+            <label class="slider-field" for="lifeSpan">
+              <span>Lifespan</span>
+              <output id="lifeSpanValue">300</output>
+              <input id="lifeSpan" type="range" min="100" max="600" step="25" value="300">
+            </label>
+            <label class="slider-field" for="maxForce">
+              <span>Max force</span>
+              <output id="maxForceValue">0.50</output>
+              <input id="maxForce" type="range" min="0.1" max="1.2" step="0.05" value="0.5">
+            </label>
+            <label class="slider-field" for="mutationRate">
+              <span>Mutation rate</span>
+              <output id="mutationRateValue">0.10%</output>
+              <input id="mutationRate" type="range" min="0" max="2" step="0.05" value="0.1">
+            </label>
+          </section>
+
+          <section class="control-section">
+            <h2>VISUALS</h2>
+            <label class="toggle-field" for="showTrails">
+              <span>Show trails</span>
+              <input id="showTrails" type="checkbox" checked>
+            </label>
+            <label class="toggle-field" for="showElite">
+              <span>Highlight elite agents</span>
+              <input id="showElite" type="checkbox" checked>
+            </label>
+            <label class="toggle-field" for="showBestGhost">
+              <span>Best trajectory ghost</span>
+              <input id="showBestGhost" type="checkbox" checked>
+            </label>
+            <label class="toggle-field" for="showHeatmap">
+              <span>Collision heatmap</span>
+              <input id="showHeatmap" type="checkbox" checked>
+            </label>
+          </section>
+
+          <button id="resetButton" class="primary-button" type="button">Reset training</button>
+          <button id="randomFieldButton" class="secondary-button" type="button">Random red field</button>
+
+          <section class="info-card">
+            <h2>GOAL</h2>
+            <p>Each generation mutates short movement programs. Agents that reach the green target without hitting the red wall get selected more often.</p>
+          </section>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <section class="simulation-card">
+          <header class="sim-header">
+            <div class="header-actions">
+              <button id="pauseButton" class="header-button" type="button" aria-pressed="false">Pause</button>
+              <button id="themeToggle" class="header-button" type="button" aria-label="Enable dark mode" aria-pressed="false" title="Enable dark mode">☾</button>
+            </div>
+            <h2>Swarm Evolution</h2>
+            <p id="timeTitle">generation 1 · timestep 0 / 300</p>
+          </header>
+          <div class="scene-frame">
+            <div id="sceneMount" aria-label="Swarm genetic training simulation"></div>
+            <div class="canvas-overlay" aria-hidden="true">
+              <span class="chip">Target seeking</span>
+              <span class="chip">Selection + mutation</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="bottom-grid">
+          <article class="data-card">
+            <h2>METRICS</h2>
+            <div class="metrics-grid">
+              <div class="metric"><span>Generation</span><strong id="generationMetric">1</strong></div>
+              <div class="metric"><span>Reached target</span><strong id="completedMetric">0</strong></div>
+              <div class="metric"><span>Crashed</span><strong id="crashedMetric">0</strong></div>
+              <div class="metric"><span>Best fitness</span><strong id="fitnessMetric">0.00</strong></div>
+              <div class="metric"><span>Mutated genes</span><strong id="mutationMetric">0</strong></div>
+              <div class="metric"><span>Best distance</span><strong id="distanceMetric">-</strong></div>
+            </div>
+          </article>
+
+          <article class="data-card genome-card">
+            <h2>BEST GENOME</h2>
+            <p id="genomeMeta" class="genome-meta">Waiting for the first evaluated generation.</p>
+            <canvas id="genomeCanvas" class="genome-canvas" aria-label="Best agent DNA vector viewer"></canvas>
+            <div class="compact-legend">
+              <div class="legend-row"><i class="swatch target"></i><span>Target</span></div>
+              <div class="legend-row"><i class="swatch obstacle"></i><span>Red field</span></div>
+              <div class="legend-row"><i class="swatch best"></i><span>Best ghost</span></div>
+              <div class="legend-row"><i class="swatch heatmap"></i><span>Collision heatmap</span></div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.8/p5.js"></script>
+    <script>
+      var target, population;
+      var obstacles = [];
+      var fieldSpec = [];
+      var popSize = 1000;
+      var lifespan = 300;
+      var maxforce = 0.5;
+      var mutationRate = 0.001;
+      var count = 0;
+      var generation = 1;
+      var paused = false;
+      var showTrails = true;
+      var showElite = true;
+      var showBestGhost = true;
+      var showHeatmap = true;
+      var lastBestTrajectory = [];
+      var lastBestGenome = [];
+      var lastBestDistance = null;
+      var lastBestFitness = 0;
+      var lastMutationCount = 0;
+      var heatmapPoints = [];
+      var sceneCanvas;
+
+      var controls = {
+        populationSize: document.getElementById("populationSize"),
+        lifeSpan: document.getElementById("lifeSpan"),
+        maxForce: document.getElementById("maxForce"),
+        mutationRate: document.getElementById("mutationRate"),
+        showTrails: document.getElementById("showTrails"),
+        showElite: document.getElementById("showElite"),
+        showBestGhost: document.getElementById("showBestGhost"),
+        showHeatmap: document.getElementById("showHeatmap"),
+        resetButton: document.getElementById("resetButton"),
+        randomFieldButton: document.getElementById("randomFieldButton"),
+        pauseButton: document.getElementById("pauseButton"),
+        themeToggle: document.getElementById("themeToggle"),
+        timeTitle: document.getElementById("timeTitle"),
+        generationMetric: document.getElementById("generationMetric"),
+        completedMetric: document.getElementById("completedMetric"),
+        crashedMetric: document.getElementById("crashedMetric"),
+        fitnessMetric: document.getElementById("fitnessMetric"),
+        mutationMetric: document.getElementById("mutationMetric"),
+        distanceMetric: document.getElementById("distanceMetric"),
+        genomeCanvas: document.getElementById("genomeCanvas"),
+        genomeMeta: document.getElementById("genomeMeta"),
+      };
+
+      function cssVar(name, fallback) {
+        return getComputedStyle(document.body).getPropertyValue(name).trim() || fallback;
+      }
+
+      function updateRangeFill(input) {
+        var min = Number(input.min || 0);
+        var max = Number(input.max || 100);
+        var value = Number(input.value || 0);
+        var progress = ((value - min) / Math.max(max - min, 1)) * 100;
+        input.style.setProperty("--range-progress", progress + "%");
+      }
+
+      function updateControlLabels() {
+        document.getElementById("populationSizeValue").textContent = String(popSize);
+        document.getElementById("lifeSpanValue").textContent = String(lifespan);
+        document.getElementById("maxForceValue").textContent = maxforce.toFixed(2);
+        document.getElementById("mutationRateValue").textContent = (mutationRate * 100).toFixed(2) + "%";
+        Object.keys(controls).forEach(function(key) {
+          if (controls[key] && controls[key].type === "range") updateRangeFill(controls[key]);
+        });
+      }
+
+      function readControls() {
+        popSize = Number(controls.populationSize.value);
+        lifespan = Number(controls.lifeSpan.value);
+        maxforce = Number(controls.maxForce.value);
+        mutationRate = Number(controls.mutationRate.value) / 100;
+        showTrails = controls.showTrails.checked;
+        showElite = controls.showElite.checked;
+        showBestGhost = controls.showBestGhost.checked;
+        showHeatmap = controls.showHeatmap.checked;
+        updateControlLabels();
+      }
+
+      function randomBetween(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function defaultFieldSpec() {
+        return [{ x: 0.25, y: 0.52, w: 0.5, h: 0.026 }];
+      }
+
+      function randomFieldSpec() {
+        var specs = [];
+        var barCount = Math.floor(randomBetween(2, 5.99));
+        for (var i = 0; i < barCount; i++) {
+          var w = randomBetween(0.18, 0.56);
+          var h = randomBetween(0.018, 0.036);
+          specs.push({
+            x: randomBetween(0.06, 0.94 - w),
+            y: randomBetween(0.31, 0.74),
+            w: w,
+            h: h,
+          });
+        }
+        return specs;
+      }
+
+      function rebuildObstacles() {
+        if (!fieldSpec.length) fieldSpec = defaultFieldSpec();
+        obstacles = fieldSpec.map(function(spec) {
+          return new Obstacle(spec);
+        });
+      }
+
+      function randomizeField() {
+        fieldSpec = randomFieldSpec();
+        heatmapPoints = [];
+        resetTraining();
+      }
+
+      function resetTraining() {
+        readControls();
+        count = 0;
+        generation = 1;
+        lastBestTrajectory = [];
+        lastBestGenome = [];
+        lastBestDistance = null;
+        lastBestFitness = 0;
+        lastMutationCount = 0;
+        heatmapPoints = [];
+        rebuildObstacles();
+        population = new Population();
+        target = new Target(64);
+        updateStats();
+        drawGenomeViewer();
+      }
+
+      function applyTheme(theme) {
+        document.body.dataset.theme = theme === "dark" ? "dark" : "light";
+        var isDark = document.body.dataset.theme === "dark";
+        controls.themeToggle.textContent = isDark ? "☀" : "☾";
+        controls.themeToggle.title = isDark ? "Enable light mode" : "Enable dark mode";
+        controls.themeToggle.setAttribute("aria-label", controls.themeToggle.title);
+        controls.themeToggle.setAttribute("aria-pressed", String(isDark));
+        localStorage.setItem("swarm-playground-theme", document.body.dataset.theme);
+        drawGenomeViewer();
+      }
+
+      function toggleTheme() {
+        applyTheme(document.body.dataset.theme === "dark" ? "light" : "dark");
+      }
+
+      function updateStats() {
+        if (!population) return;
+        var completed = 0;
+        var crashed = 0;
+        for (var i = 0; i < population.rockets.length; i++) {
+          var rocket = population.rockets[i];
+          if (rocket.completed) completed += 1;
+          if (rocket.crashed) crashed += 1;
+        }
+        controls.timeTitle.textContent = "generation " + generation + " · timestep " + count + " / " + lifespan;
+        controls.generationMetric.textContent = String(generation);
+        controls.completedMetric.textContent = String(completed);
+        controls.crashedMetric.textContent = String(crashed);
+        controls.fitnessMetric.textContent = lastBestFitness.toFixed(2);
+        controls.mutationMetric.textContent = String(lastMutationCount);
+        controls.distanceMetric.textContent = lastBestDistance == null ? "-" : lastBestDistance.toFixed(1) + "px";
+      }
+
+      function drawGenomeViewer() {
+        var canvas = controls.genomeCanvas;
+        if (!canvas) return;
+        var rect = canvas.getBoundingClientRect();
+        var ratio = window.devicePixelRatio || 1;
+        var targetWidth = Math.max(1, Math.floor(rect.width * ratio));
+        var targetHeight = Math.max(1, Math.floor(rect.height * ratio));
+        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+        }
+
+        var ctx = canvas.getContext("2d");
+        ctx.save();
+        ctx.scale(ratio, ratio);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.fillStyle = cssVar("--field-bg", "#ffffff");
+        ctx.fillRect(0, 0, rect.width, rect.height);
+
+        if (!lastBestGenome.length) {
+          ctx.fillStyle = cssVar("--muted", "#4b5563");
+          ctx.font = "12px Inter, system-ui, sans-serif";
+          ctx.fillText("Best DNA will appear after generation 1.", 14, rect.height / 2);
+          ctx.restore();
+          if (controls.genomeMeta) controls.genomeMeta.textContent = "Waiting for the first evaluated generation.";
+          return;
+        }
+
+        var maxVectors = 42;
+        var stride = Math.max(1, Math.ceil(lastBestGenome.length / maxVectors));
+        var visible = Math.ceil(lastBestGenome.length / stride);
+        var gap = rect.width / Math.max(visible, 1);
+        var midY = rect.height / 2;
+        var vectorScale = Math.min(22, rect.height * 0.24);
+        var bestColor = cssVar("--canvas-best", "#e87511");
+        var axisColor = cssVar("--canvas-axis", "#8b96a8");
+
+        ctx.strokeStyle = axisColor;
+        ctx.globalAlpha = 0.24;
+        ctx.beginPath();
+        ctx.moveTo(10, midY);
+        ctx.lineTo(rect.width - 10, midY);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        ctx.strokeStyle = bestColor;
+        ctx.fillStyle = bestColor;
+        ctx.lineWidth = 1.6;
+        var drawn = 0;
+        for (var i = 0; i < lastBestGenome.length; i += stride) {
+          var gene = lastBestGenome[i];
+          var x = gap * drawn + gap / 2;
+          var y = midY;
+          var endX = x + gene.x * vectorScale;
+          var endY = y + gene.y * vectorScale;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(endX, endY, 2.4, 0, Math.PI * 2);
+          ctx.fill();
+          drawn += 1;
+        }
+
+        ctx.fillStyle = cssVar("--muted", "#4b5563");
+        ctx.font = "11px Inter, system-ui, sans-serif";
+        ctx.fillText("sampled movement vectors", 12, rect.height - 12);
+        ctx.restore();
+
+        if (controls.genomeMeta) {
+          controls.genomeMeta.textContent =
+            "Previous best agent DNA · " + lastBestGenome.length + " genes · sampled every " + stride + " step(s).";
+        }
+      }
+
+      function setup() {
+        var mount = document.getElementById("sceneMount");
+        sceneCanvas = createCanvas(mount.clientWidth, mount.clientHeight);
+        sceneCanvas.parent("sceneMount");
+        frameRate(60);
+        resetTraining();
+      }
+
+      function windowResized() {
+        var mount = document.getElementById("sceneMount");
+        resizeCanvas(mount.clientWidth, mount.clientHeight);
+        rebuildObstacles();
+        target = new Target(64);
+        drawGenomeViewer();
+      }
+
+      function drawGrid() {
+        var gridColor = cssVar("--canvas-grid", "#d8dee8");
+        var axisColor = cssVar("--canvas-axis", "#8b96a8");
+        background(cssVar("--canvas-bg", "#ffffff"));
+        stroke(gridColor);
+        strokeWeight(1);
+        for (var x = 0; x <= width; x += 48) line(x, 0, x, height);
+        for (var y = 0; y <= height; y += 48) line(0, y, width, y);
+        stroke(axisColor);
+        line(width / 2, 0, width / 2, height);
+        line(0, height - 12, width, height - 12);
+      }
+
+      function drawBestTrajectoryGhost() {
+        if (!showBestGhost || lastBestTrajectory.length < 2) return;
+        noFill();
+        stroke(cssVar("--canvas-best", "#e87511"));
+        strokeWeight(3);
+        beginShape();
+        for (var i = 0; i < lastBestTrajectory.length; i += 2) {
+          vertex(lastBestTrajectory[i].x, lastBestTrajectory[i].y);
+        }
+        endShape();
+        var end = lastBestTrajectory[lastBestTrajectory.length - 1];
+        noStroke();
+        fill(cssVar("--canvas-best", "#e87511"));
+        ellipse(end.x, end.y, 8, 8);
+      }
+
+      function drawCollisionHeatmap() {
+        if (!showHeatmap || heatmapPoints.length === 0) return;
+        noStroke();
+        for (var i = 0; i < heatmapPoints.length; i++) {
+          var point = heatmapPoints[i];
+          var age = i / Math.max(1, heatmapPoints.length - 1);
+          fill(235, 87, 87, 24 + age * 70);
+          ellipse(point.x, point.y, point.radius, point.radius);
+        }
+      }
+
+      function drawObstacles() {
+        for (var i = 0; i < obstacles.length; i++) {
+          obstacles[i].show();
+        }
+      }
+
+      function hitAnyObstacle(point) {
+        for (var i = 0; i < obstacles.length; i++) {
+          if (obstacles[i].hit(point)) return true;
+        }
+        return false;
+      }
+
+      function upperFieldY() {
+        if (!obstacles.length) return height * 0.5;
+        var y = obstacles[0].y;
+        for (var i = 1; i < obstacles.length; i++) y = Math.min(y, obstacles[i].y);
+        return y;
+      }
+
+      function recordCollision(point) {
+        heatmapPoints.push({
+          x: constrain(point.x, 0, width),
+          y: constrain(point.y, 0, height),
+          radius: random(14, 34),
+        });
+        if (heatmapPoints.length > 360) heatmapPoints.splice(0, heatmapPoints.length - 360);
+      }
+
+      function draw() {
+        drawGrid();
+        drawCollisionHeatmap();
+        drawBestTrajectoryGhost();
+        if (!paused) {
+          population.run();
+          target.show();
+          drawObstacles();
+          count++;
+          if (count >= lifespan || population.failed()) {
+            population.evaluate();
+            population.selection();
+            count = 0;
+            generation++;
+          }
+        } else {
+          population.showOnly();
+          target.show();
+          drawObstacles();
+        }
+        updateStats();
+      }
+
+      function Rocket(dna) {
+        this.pos = createVector(width / 2, height - 22);
+        this.vel = createVector();
+        this.acc = createVector();
+        this.trail = [];
+        this.path = [this.pos.copy()];
+        this.col = color(random(90, 255), random(120, 220), random(180, 255));
+
+        if (dna) this.dna = dna;
+        else this.dna = new DNA();
+
+        this.completed = false;
+        this.crashed = false;
+        this.fitness = 0;
+
+        this.applyForce = function(force) {
+          this.acc.add(force);
+        };
+
+        this.calcFitness = function() {
+          var d = dist(this.pos.x, this.pos.y, target.x, target.y);
+          this.targetDistance = d;
+          this.fitness = map(d, 0, width, width, 0);
+          if (this.completed) this.fitness *= 100;
+          if (this.crashed) this.fitness /= 10;
+          if (this.pos.y >= height) this.fitness /= 2;
+          if (this.pos.y < 0) this.fitness /= 2;
+          if (this.pos.y < upperFieldY()) this.fitness *= 3;
+        };
+
+        this.update = function() {
+          if (target.hit(this.pos)) this.completed = true;
+          var boundsCrash = this.pos.x < 0 || this.pos.x > width || this.pos.y > height || this.pos.y < 0;
+          var obstacleCrash = hitAnyObstacle(this.pos);
+          if ((boundsCrash || obstacleCrash) && !this.crashed) {
+            this.crashed = true;
+            recordCollision(this.pos);
+          }
+
+          if (!this.crashed && !this.completed) {
+            this.applyForce(this.dna.genes[count]);
+            this.vel.add(this.acc);
+            this.vel.limit(7);
+            this.pos.add(this.vel);
+            this.path.push(this.pos.copy());
+            this.acc.mult(0);
+            if (showTrails && count % 4 === 0) {
+              this.trail.push(this.pos.copy());
+              if (this.trail.length > 34) this.trail.shift();
+            }
+          }
+        };
+
+        this.show = function() {
+          if (showTrails && this.trail.length > 1) {
+            noFill();
+            stroke(cssVar("--canvas-trail", "rgba(22, 119, 232, 0.22)"));
+            strokeWeight(1);
+            beginShape();
+            for (var i = 0; i < this.trail.length; i++) vertex(this.trail[i].x, this.trail[i].y);
+            endShape();
+          }
+
+          push();
+          noStroke();
+          translate(this.pos.x, this.pos.y);
+          rotate(this.vel.heading());
+          rotate(PI / 2);
+          if (this.completed && showElite) fill(cssVar("--canvas-agent-hot", "#e87511"));
+          else if (this.crashed) fill(120, 120, 120, 85);
+          else fill(cssVar("--canvas-agent", "#1677e8"));
+          triangle(0, -10, -7, 10, 7, 10);
+          pop();
+        };
+      }
+
+      function Population() {
+        this.rockets = [];
+        this.matingpool = [];
+
+        for (var a = 0; a < popSize; a++) this.rockets[a] = new Rocket();
+
+        this.evaluate = function() {
+          var maxfit = 0;
+          var bestRocket = null;
+          for (var i = 0; i < this.rockets.length; i++) {
+            this.rockets[i].calcFitness();
+            if (this.rockets[i].fitness > maxfit) {
+              maxfit = this.rockets[i].fitness;
+              bestRocket = this.rockets[i];
+            }
+          }
+
+          if (bestRocket) {
+            lastBestTrajectory = bestRocket.path.map(function(point) {
+              return { x: point.x, y: point.y };
+            });
+            lastBestGenome = bestRocket.dna.genes.map(function(gene) {
+              return { x: gene.x, y: gene.y };
+            });
+            lastBestDistance = bestRocket.targetDistance;
+            lastBestFitness = maxfit;
+            drawGenomeViewer();
+          }
+
+          maxfit = maxfit || 1;
+          for (var k = 0; k < this.rockets.length; k++) this.rockets[k].fitness /= maxfit;
+
+          this.matingpool = [];
+          for (var j = 0; j < this.rockets.length; j++) {
+            var n = this.rockets[j].fitness * 100;
+            for (var m = 0; m < n; m++) this.matingpool.push(this.rockets[j]);
+          }
+          if (this.matingpool.length === 0) this.matingpool = this.rockets.slice();
+        };
+
+        this.selection = function() {
+          var newRockets = [];
+          var generationMutations = 0;
+          for (var i = 0; i < this.rockets.length; i++) {
+            var parentA = random(this.matingpool);
+            var parentB = random(this.matingpool);
+            var child = parentA.fitness > parentB.fitness ? parentA.dna.crossover(parentB.dna) : parentB.dna.crossover(parentA.dna);
+            generationMutations += child.mutation();
+            newRockets[i] = new Rocket(child);
+          }
+          lastMutationCount = generationMutations;
+          this.rockets = newRockets;
+        };
+
+        this.failed = function() {
+          for (var i = 0; i < this.rockets.length; i++) {
+            if (!this.rockets[i].crashed && !this.rockets[i].completed) return false;
+          }
+          return true;
+        };
+
+        this.run = function() {
+          for (var a = 0; a < this.rockets.length; a++) {
+            this.rockets[a].update();
+            this.rockets[a].show();
+          }
+        };
+
+        this.showOnly = function() {
+          for (var a = 0; a < this.rockets.length; a++) this.rockets[a].show();
+        };
+      }
+
+      function Obstacle(spec) {
+        this.spec = spec || { x: 0.25, y: 0.52, w: 0.5, h: 0.026 };
+        this.w = width * this.spec.w;
+        this.h = Math.max(12, height * this.spec.h);
+        this.x = width * this.spec.x;
+        this.y = height * this.spec.y;
+
+        this.hit = function(input) {
+          return input.x > this.x && input.x < this.x + this.w && input.y > this.y && input.y < this.y + this.h;
+        };
+
+        this.show = function() {
+          noStroke();
+          fill(cssVar("--canvas-obstacle", "#EB5757"));
+          rect(this.x, this.y, this.w, this.h, 8);
+        };
+      }
+
+      function Target(r) {
+        this.r = r;
+        this.x = width / 2;
+        this.y = height * 0.24;
+
+        this.hit = function(input) {
+          var d = dist(input.x, input.y, this.x, this.y);
+          return d < this.r / 2;
+        };
+
+        this.show = function() {
+          noStroke();
+          fill(cssVar("--canvas-target", "#27AE60"));
+          ellipse(this.x, this.y, this.r, this.r);
+          noFill();
+          stroke(cssVar("--canvas-target", "#27AE60"));
+          strokeWeight(2);
+          ellipse(this.x, this.y, this.r + 16, this.r + 16);
+        };
+      }
+
+      function DNA(genes) {
+        if (genes) {
+          this.genes = genes;
+        } else {
+          this.genes = [];
+          for (var i = 0; i < lifespan; i++) {
+            this.genes[i] = p5.Vector.random2D();
+            this.genes[i].setMag(maxforce);
+          }
+        }
+
+        this.crossover = function(partner) {
+          var newgenes = [];
+          var mid = floor(random(this.genes.length / 2));
+          for (var i = 0; i < this.genes.length; i++) {
+            var rand = random(this.genes.length);
+            newgenes[i] = rand > mid ? this.genes[i] : partner.genes[i];
+          }
+          return new DNA(newgenes);
+        };
+
+        this.mutation = function() {
+          var mutated = 0;
+          for (var i = 0; i < this.genes.length; i++) {
+            if (random(1) < mutationRate) {
+              this.genes[i] = p5.Vector.random2D();
+              this.genes[i].setMag(maxforce);
+              mutated += 1;
+            }
+          }
+          return mutated;
+        };
+      }
+
+      ["populationSize", "lifeSpan", "maxForce", "mutationRate"].forEach(function(id) {
+        controls[id].addEventListener("input", function() {
+          readControls();
+        });
+        controls[id].addEventListener("change", resetTraining);
+      });
+      controls.showTrails.addEventListener("change", readControls);
+      controls.showElite.addEventListener("change", readControls);
+      controls.showBestGhost.addEventListener("change", readControls);
+      controls.showHeatmap.addEventListener("change", readControls);
+      controls.resetButton.addEventListener("click", resetTraining);
+      controls.randomFieldButton.addEventListener("click", randomizeField);
+      controls.pauseButton.addEventListener("click", function() {
+        paused = !paused;
+        controls.pauseButton.textContent = paused ? "Resume" : "Pause";
+        controls.pauseButton.setAttribute("aria-pressed", String(paused));
+      });
+      controls.themeToggle.addEventListener("click", toggleTheme);
+
+      readControls();
+      applyTheme(localStorage.getItem("swarm-playground-theme") || "light");
+    </script>
+  </body>
+</html>
